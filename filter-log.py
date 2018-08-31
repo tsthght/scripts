@@ -136,18 +136,30 @@ log_output_file = r"%s/%s"%(log_path, log_output)
 wfp = open(log_output_file, "w+")
 for f in log_file_list:
     st_md_start = 0
+    st_sl_start = 0;
     rfp = open(f, "r")
+    line_buffer = ""
     for line in rfp:
         line = line.strip()
+        # 处理元数据行
+        if filter_metadata(line):
+            st_sl_start = 0
+            if not line_buffer.strip() == "":
+                wfp.write(line_buffer + "\n")
+                line_buffer = ""
+            # 按条件过滤
+            if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t):
+                line_buffer += line
+                st_md_start = 1
+            continue
         # 考虑有可能SQL有换行的情况,只过滤metadata
-        if st_md_start == 1 and not filter_metadata(line):
-            wfp.write(line + "\n")
-        else:
+        if st_md_start == 1 or st_sl_start == 1:
+            line_buffer += " "
+            line_buffer += line
             st_md_start = 0
-        # 按条件过滤
-        if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t):
-            st_md_start = 1
-            wfp.write(line + "\n")
+            st_sl_start = 1
+    if not line_buffer.strip() == "":
+        wfp.write(line_buffer + "\n")
     rfp.close()
 wfp.close()
 
