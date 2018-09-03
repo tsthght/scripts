@@ -50,6 +50,8 @@ def filter_metadata(s):
 
 def filter_str(s, d):
     for (k, v) in d.items():
+        if k == "sql":
+            continue
         cond = r"%s:%s"%(str(k), str(v))
         if s.find(cond) < 0:
             return False
@@ -76,6 +78,13 @@ def filter_time(s, start_t, end_t):
     else:
         return True
     return False
+
+def filter_sql(s, d):
+    for (k, v) in d.items():
+        if k == "sql":
+            if s.upper().find(v.upper()) < 0:
+                return False
+    return True
 
 log_path=""
 log_cond_json=""
@@ -145,7 +154,9 @@ for f in log_file_list:
         if filter_metadata(line):
             st_sl_start = 0
             if not line_buffer.strip() == "":
-                wfp.write(line_buffer + "\n")
+                line_buffer = re.sub(r' +', ' ', line_buffer)
+                if filter_sql(line_buffer, log_cond_dict):
+                    wfp.write(line_buffer + "\n")
                 line_buffer = ""
             # 按条件过滤
             if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t):
@@ -159,7 +170,9 @@ for f in log_file_list:
             st_md_start = 0
             st_sl_start = 1
     if not line_buffer.strip() == "":
-        wfp.write(line_buffer + "\n")
+        line_buffer = re.sub(r' +', ' ', line_buffer)
+        if filter_sql(line_buffer, log_cond_dict):
+            wfp.write(line_buffer + "\n")
     rfp.close()
 wfp.close()
 
