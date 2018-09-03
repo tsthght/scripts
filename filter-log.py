@@ -50,7 +50,7 @@ def filter_metadata(s):
 
 def filter_str(s, d):
     for (k, v) in d.items():
-        if k == "sql":
+        if k == "sql" or k == "latency" or k == "operator":
             continue
         cond = r"%s:%s"%(str(k), str(v))
         if s.find(cond) < 0:
@@ -86,6 +86,26 @@ def filter_sql(s, f):
         return False
     return True
 
+def filter_latency(s, l, o):
+    if l == -1:
+        return True
+    try:
+        latency = re.search(r"latency:([0-9]+.[0-9]+)", s).group(0)
+    except AttributeError:
+        return False
+    latency = latency.split(":")[1]
+    if o == "<":
+        if float(latency) < l:
+            return True
+    elif o == "=":
+        if float(latency) == l:
+            return True
+    elif o == ">":
+        if float(latency) > l:
+            return True
+    else:
+        return False
+    return False
 
 log_path=""
 log_cond_json=""
@@ -94,7 +114,7 @@ log_time_start=""
 log_time_end=""
 
 log_sql=""
-log_latency=0
+log_latency=-1
 log_operator="<"
 
 try:
@@ -150,6 +170,7 @@ log_cond_dict = json.loads(log_cond_json)
 for (k, v) in log_cond_dict.items():
     if k == "sql":
         log_sql = v
+        log_sql = re.sub(r' +', ' ', log_sql)
     if k == "latency":
         log_latency = float(v)
     if k == "operator":
@@ -173,7 +194,7 @@ for f in log_file_list:
                     wfp.write(line_buffer + "\n")
                 line_buffer = ""
             # 按条件过滤
-            if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t):
+            if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t) and filter_latency(line, log_latency, log_operator):
                 line_buffer += line
                 st_md_start = 1
             continue
