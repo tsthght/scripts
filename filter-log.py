@@ -50,7 +50,7 @@ def filter_metadata(s):
 
 def filter_str(s, d):
     for (k, v) in d.items():
-        if k == "sql" or k == "latency" or k == "operator":
+        if k == "sql" or k == "latency_start" or k == "latency_end":
             continue
         cond = r"%s:%s"%(str(k), str(v))
         if s.find(cond) < 0:
@@ -86,25 +86,18 @@ def filter_sql(s, f):
         return False
     return True
 
-def filter_latency(s, l, o):
-    if l == -1:
+def filter_latency(s, st, ed):
+    if st == -1 or ed == -1:
         return True
     try:
         latency = re.search(r"latency:([0-9]+.[0-9]+)", s).group(0)
     except AttributeError:
         return False
     latency = latency.split(":")[1]
-    if o == "<":
-        if float(latency) < l:
-            return True
-    elif o == "=":
-        if float(latency) == l:
-            return True
-    elif o == ">":
-        if float(latency) > l:
-            return True
-    else:
+    if latency.strip() == "":
         return False
+    if st <= float(latency) and ed >= float(latency):
+        return True
     return False
 
 log_path=""
@@ -114,8 +107,8 @@ log_time_start=""
 log_time_end=""
 
 log_sql=""
-log_latency=-1
-log_operator="<"
+log_latency_st=-1
+log_latency_ed=-1
 
 try:
     options, args = getopt.getopt(sys.argv[1:], "hp:c:o:s:e:", ["help", "path", "cond", "output", "start", "end"])
@@ -171,10 +164,10 @@ for (k, v) in log_cond_dict.items():
     if k == "sql":
         log_sql = v
         log_sql = re.sub(r' +', ' ', log_sql)
-    if k == "latency":
-        log_latency = float(v)
-    if k == "operator":
-        log_operator = v
+    if k == "latency_start":
+        log_latency_st = float(v)
+    if k == "latency_end":
+        log_latency_ed = float(v)
 
 log_output_file = r"%s/%s"%(log_path, log_output)
 wfp = open(log_output_file, "w+")
@@ -194,7 +187,7 @@ for f in log_file_list:
                     wfp.write(line_buffer + "\n")
                 line_buffer = ""
             # 按条件过滤
-            if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t) and filter_latency(line, log_latency, log_operator):
+            if filter_str(line, log_cond_dict) and filter_time(line, start_t, end_t) and filter_latency(line, log_latency_st, log_latency_ed):
                 line_buffer += line
                 st_md_start = 1
             continue
