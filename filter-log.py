@@ -79,18 +79,23 @@ def filter_time(s, start_t, end_t):
         return True
     return False
 
-def filter_sql(s, d):
-    for (k, v) in d.items():
-        if k == "sql":
-            if s.upper().find(v.upper()) < 0:
-                return False
+def filter_sql(s, f):
+    if f.strip() == "":
+        return True
+    if s.upper().find(f.upper()) < 0:
+        return False
     return True
+
 
 log_path=""
 log_cond_json=""
 log_output="sqllog.sql"
 log_time_start=""
 log_time_end=""
+
+log_sql=""
+log_latency=0
+log_operator="<"
 
 try:
     options, args = getopt.getopt(sys.argv[1:], "hp:c:o:s:e:", ["help", "path", "cond", "output", "start", "end"])
@@ -141,6 +146,15 @@ for f in path_file_list:
 # 获取过滤条件进行过滤
 log_cond_json = log_cond_json.replace("'", '"')
 log_cond_dict = json.loads(log_cond_json)
+
+for (k, v) in log_cond_dict.items():
+    if k == "sql":
+        log_sql = v
+    if k == "latency":
+        log_latency = float(v)
+    if k == "operator":
+        log_operator = v
+
 log_output_file = r"%s/%s"%(log_path, log_output)
 wfp = open(log_output_file, "w+")
 for f in log_file_list:
@@ -155,7 +169,7 @@ for f in log_file_list:
             st_sl_start = 0
             if not line_buffer.strip() == "":
                 line_buffer = re.sub(r' +', ' ', line_buffer)
-                if filter_sql(line_buffer, log_cond_dict):
+                if filter_sql(line_buffer, log_sql):
                     wfp.write(line_buffer + "\n")
                 line_buffer = ""
             # 按条件过滤
@@ -171,7 +185,7 @@ for f in log_file_list:
             st_sl_start = 1
     if not line_buffer.strip() == "":
         line_buffer = re.sub(r' +', ' ', line_buffer)
-        if filter_sql(line_buffer, log_cond_dict):
+        if filter_sql(line_buffer, log_sql):
             wfp.write(line_buffer + "\n")
     rfp.close()
 wfp.close()
